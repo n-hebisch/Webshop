@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <title>{% block title %}Welcome!{% endblock %}</title>
+    {% block stylesheets %}{% endblock %}
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}"/>
+</head>
+<body>
+{% block body %}
+    <table border="1" style="width: 100%">
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Value</th>
+            <th>Updated</th>
+            <th>Created</th>
+        </tr>
+
+        {#{% for total in totals %}#}
+            {#<tr>#}
+                {#<td>{{ total.id }}</td>#}
+                {#<td>{{ total.name }}</td>#}
+                {#<td>{{ total.value }}</td>#}
+                {#<td>{{ total.updated|date('d-m-y h:i:s') }}</td>#}
+                {#<td>{{ total.created|date('d-m-y h:i:s') }}</td>#}
+            {#</tr>#}
+        {#{% endfor %}#}
+
+    </table>
+
+
+{% endblock %}
+{% block javascripts %}{% endblock %}
+</body>
+</html>
