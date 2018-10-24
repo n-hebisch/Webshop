@@ -49,35 +49,54 @@ class LoginController extends Controller
             $email = $_POST['email'];
             $password = $_POST['password'];
 
-            if (isset($email) && isset($password)) {
-                $conn = $this->getDoctrine()->getEntityManager()->getConnection();
+            //check email verification
+            $conn = $this->getDoctrine()->getEntityManager()->getConnection();
 
-                $sql = '
+            $sql = '
+            SELECT email_verify FROM user u
+            WHERE email = :email
+            ';
+            $stmt = $conn->prepare($sql);
+            $stmt->execute(['email' => $email]);
+            $response = $stmt->fetchAll();
+
+            if ($response[0]['email_verify'] === 'true') {
+
+                if (isset($email) && isset($password)) {
+                    $conn = $this->getDoctrine()->getEntityManager()->getConnection();
+
+                    $sql = '
             SELECT id,email,password FROM user u
             WHERE email = :email
             ';
-                $stmt = $conn->prepare($sql);
-                $stmt->execute(['email' => $email]);
-                $response = $stmt->fetchAll();
+                    $stmt = $conn->prepare($sql);
+                    $stmt->execute(['email' => $email]);
+                    $response = $stmt->fetchAll();
 
 
-                if (empty($response)) {
-                    $this->addFlash('error', 'wrong e-mail');
-                    return $this->render('login/login.html.twig', ['email' => $email]);
-                } else {
-
-                    if (!password_verify($password, $response[0]['password'])) {
-                        $this->addFlash('error', 'wrong password');
+                    if (empty($response)) {
+                        $this->addFlash('error', 'wrong e-mail');
                         return $this->render('login/login.html.twig', ['email' => $email]);
                     } else {
-                        $this->addFlash('success', 'login successful!');
 
-                        $this->get('session')->set('id', $response[0]['id']);
-                        return $this->redirectToRoute('product_index');
+                        if (!password_verify($password, $response[0]['password'])) {
+                            $this->addFlash('error', 'wrong password');
+                            return $this->render('login/login.html.twig', ['email' => $email]);
+                        } else {
+                            $this->addFlash('success', 'login successful!');
+
+                            $this->get('session')->set('id', $response[0]['id']);
+                            return $this->redirectToRoute('product_index');
+                        }
                     }
-                }
 
+                }
+                //if email is not verified
+            } else if ($response[0]['email_verify'] !== 'true') {
+                $this->addFlash('error', 'we sent an e-mail to your given address, please verify first :)');
+                return $this->render('login/login.html.twig', ['email' => $email]);
             }
+
 
         }
     }

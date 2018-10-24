@@ -51,6 +51,10 @@ class User
      * @ORM\Column(type="string", length=100, unique=true)
      */
     private $email;
+    /**
+     * @ORM\Column(type="string", length=100)
+     */
+    private $email_verify;
 
     /**
      * @return mixed
@@ -177,6 +181,22 @@ class User
     public function setEmail($email)
     {
         $this->email = $email;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getEmailVerify()
+    {
+        return $this->email_verify;
+    }
+
+    /**
+     * @param mixed $email_verify
+     */
+    public function setEmailVerify($email_verify)
+    {
+        $this->email_verify = $email_verify;
     }
 
 

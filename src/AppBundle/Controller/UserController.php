@@ -25,6 +25,7 @@ use Symfony\Component\HttpFoundation\Session\Session;
 
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\Validator\Tests\Fixtures\ToString;
+use Symfony\Component\Dotenv\Dotenv;
 
 
 class UserController extends Controller
@@ -53,7 +54,7 @@ class UserController extends Controller
      */
     public function indexAction($offset = null, $limit = null)
     {
-        $loggedIn=$this->checkLogin();
+        $loggedIn = $this->checkLogin();
         if ($loggedIn) {
             $users = [];
 
@@ -66,7 +67,7 @@ class UserController extends Controller
                 return new \Exception('error with offset and limit');
             }
             return $this->render('user/index.html.twig', array(
-                'users' => $users,'loggedIn'=> $loggedIn
+                'users' => $users, 'loggedIn' => $loggedIn
             ));
         } else {
             $this->addFlash('error', 'you have to login to do this');
@@ -147,7 +148,7 @@ class UserController extends Controller
             $conn = $this->getDoctrine()->getEntityManager()->getConnection();
 
             $sql = '
-            SELECT email FROM user u
+            SELECT email FROM user uroot
             WHERE email = :email
             ';
             $stmt = $conn->prepare($sql);
@@ -170,12 +171,62 @@ class UserController extends Controller
             $user->setUsername($username);
             $user->setEmail($email);
             $user->setPassword(password_hash($password, PASSWORD_DEFAULT));
+            $email_verify = bin2hex(random_bytes(16));
+            $user->setEmailVerify($email_verify);
 
             $entityManager->persist($user);
             $entityManager->flush();
 
+            $dotenv = new Dotenv();
+            $dotenv->load(__DIR__ . '/.env');
 
-            $this->addFlash('success', 'Account successfully created!');
+            //send verification email
+            # First, instantiate the SDK with your API credentials
+            $mg = Mailgun::create(getenv('MAILGUN_APIKEY'));
+
+            # Now, compose and send your message.
+            # $mg->messages()->send($domain, $params);
+            $mg->messages()->send(getenv('MAILGUN_DOMAIN'), [
+                'from' => getenv('MAILFUN_FROM_ADDRESS'),
+                'to' => getenv('MY_EMAIL'),
+                'subject' => 'Welcome ' . $username . '!',
+                'text' => 'http://localhost:8000/registration/email-verify/' . $email_verify
+            ]);
+
+
+            $this->addFlash('success', 'Account successfully created
+            Please verify your account now!');
+            return $this->redirectToRoute('product_index');
+        }
+    }
+
+    /**
+     * @Route("/registration/email-verify/{verifycode}", methods="GET")
+     */
+    public function emailVerify($verifycode)
+    {
+        $conn = $this->getDoctrine()->getEntityManager()->getConnection();
+
+        $sql = '
+            SELECT email,email_verify FROM user u
+            WHERE email_verify = :email_verify
+            ';
+        $stmt = $conn->prepare($sql);
+        $stmt->execute(['email_verify' => $verifycode]);
+        $response = $stmt->fetchAll();
+
+        if (!empty($response)) {
+
+            $sql = '
+            UPDATE user SET email_verify="true" 
+            WHERE email_verify= :email_verify AND email= :email
+            ';
+            $stmt = $conn->prepare($sql);
+            $stmt->execute(['email_verify' => $verifycode, 'email' => $response[0]['email']]);
+            $this->addFlash('success', 'your email is now verified, you can login');
+            return $this->redirectToRoute('product_index');
+        }
+        else{
             return $this->redirectToRoute('product_index');
         }
     }
@@ -185,13 +236,13 @@ class UserController extends Controller
      */
     public function editAction($id)
     {
-        $loggedIn=$this->checkLogin();
+        $loggedIn = $this->checkLogin();
         if ($loggedIn) {
             $em = $this->getDoctrine()->getManager();
             $user = $em->getRepository(User::class)->find($id);
             $addresses = $em->getRepository(Address::class)->findBy(['user' => $id]);
 
-            return $this->render('user/edit.html.twig', ['user' => $user, 'addresses' => $addresses,'loggedIn'=> $loggedIn]);
+            return $this->render('user/edit.html.twig', ['user' => $user, 'addresses' => $addresses, 'loggedIn' => $loggedIn]);
         } else {
             $this->addFlash('error', 'you have to login to do this');
             return $this->redirectToRoute('product_index');
@@ -204,7 +255,7 @@ class UserController extends Controller
      */
     public function updateAction($id, Request $request)
     {
-        $loggedIn=$this->checkLogin();
+        $loggedIn = $this->checkLogin();
         if ($loggedIn) {
             $params = array();
             $content = $request->getContent();
@@ -236,7 +287,7 @@ class UserController extends Controller
      */
     public function destroyAction($id)
     {
-        $loggedIn=$this->checkLogin();
+        $loggedIn = $this->checkLogin();
         if ($loggedIn) {
             $em = $this->getDoctrine()->getManager();
 
@@ -261,11 +312,10 @@ class UserController extends Controller
      */
     public function createAddress()
     {
-        $loggedIn=$this->checkLogin();
+        $loggedIn = $this->checkLogin();
         if ($loggedIn) {
-            return $this->render('address/create.html.twig',array('loggedIn'=> $loggedIn));
-        }
-        else {
+            return $this->render('address/create.html.twig', array('loggedIn' => $loggedIn));
+        } else {
             $this->addFlash('error', 'you have to login to do this');
             return $this->redirectToRoute('product_index');
         }
